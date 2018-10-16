@@ -19,7 +19,7 @@
     ],
     "require": {
         "php": "^7.2",
-        "sopsy/base64url-php": "dev-master"
+        "sopsy/base64url-php": "^1.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^7.4"
