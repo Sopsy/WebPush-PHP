@@ -1,0 +1,33 @@
+{
+    "name": "sopsy/webpush-php",
+    "description": "PHP library for the Web Push API",
+    "keywords": ["webpush", "webpushapi", "es256", "aes128gcm"],
+    "homepage": "https://github.com/Sopsy/WebPush-PHP",
+    "type": "library",
+    "license": "LGPLv3",
+    "autoload": {
+        "psr-4": {
+            "Sopsy\\WebPush\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Aleksi Kinnunen",
+            "email": "code@npn.fi",
+            "homepage": "https://github.com/Sopsy"
+        }
+    ],
+    "require": {
+        "php": "^7.2",
+        "sopsy/base64url-php": "dev-master"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.4"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/sopsy/base64url-php"
+        }
+    ]
+}
