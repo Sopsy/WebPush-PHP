@@ -4,7 +4,7 @@ PHP Web Push library
 Supports only ES256 and aes128gcm.
 
 ## Usage
-```
+```PHP
 $endpoint = 'https://updates.push.services.mozilla.com/wpush/v2/xxxxxxx';
 $auth = Base64Url::decode('AuthKeyFromBrowser');
 $receiverPublicKey = Base64Url::decode('PublicKeyFromBrowser');
