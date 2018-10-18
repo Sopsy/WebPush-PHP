@@ -141,7 +141,8 @@ class Aes128Gcm implements NotificationPayload
     }
 
     /**
-     * Get padding for plaintext payload
+     * Get padding for plaintext payload.
+     * The separator (0x02) is always needed in the payload. The number of NULL bytes can vary.
      *
      * @param int $length Padding length, payload usually padded to max size for security
      * @return string Padding string which should be concatenated to the plaintext payload
