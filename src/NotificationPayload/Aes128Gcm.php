@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Sopsy\WebPush\NotificationPayload;
 
-use Exception;
+use RuntimeException;
 use InvalidArgumentException;
 use Sopsy\WebPush\Exception\KeyCreateException;
 use Sopsy\WebPush\Exception\KeyFileException;
@@ -24,7 +24,7 @@ class Aes128Gcm implements NotificationPayload
     protected $encryptionSalt;
 
     // 4096 bytes - content header (86 bytes) - AEAD authentication tag (16 bytes) - padding delimiter (1 byte)
-    const PAYLOAD_MAX_LENGTH = 3993;
+    protected const PAYLOAD_MAX_LENGTH = 3993;
 
     /**
      * Aes128Gcm constructor.
@@ -54,13 +54,13 @@ class Aes128Gcm implements NotificationPayload
             function openssl_pkey_derive($peer_pub_key, $priv_key, $keylen = null) {
 
                 if ($keylen !== null) {
-                    throw new \Exception('Key length attribute is not supported');
+                    throw new RuntimeException('Key length attribute is not supported');
                 }
 
                 $result = shell_exec('/bin/bash -c "/usr/bin/openssl pkeyutl -derive -inkey <(echo -n ' . escapeshellarg($priv_key) . ') '
                     . '-peerkey <(echo -n ' . escapeshellarg($peer_pub_key) . ')"');
 
-                if (empty($result)) {
+                if ($result === null) {
                     return false;
                 }
 
@@ -97,7 +97,8 @@ class Aes128Gcm implements NotificationPayload
      * Get the encrypted payload, returns the encrypted payload
      *
      * @return string aes-128-gcm encrypted payload with padding
-     * @throws Exception in case aes-128-gcm is not supported on this install
+     * @throws RuntimeException in case aes-128-gcm is not supported on this install
+     * @throws KeyFileException
      */
     public function get(): string
     {
@@ -112,21 +113,26 @@ class Aes128Gcm implements NotificationPayload
      * Encrypt the payload with AES-128-GCM
      *
      * @return string encrypted payload
-     * @throws Exception in case aes-128-gcm is not supported on this install
+     * @throws RuntimeException in case aes-128-gcm is not supported on this install
+     * @throws KeyFileException
      */
     protected function encrypt(): string
     {
-        $cipher = "aes-128-gcm";
+        $cipher = 'aes-128-gcm';
 
-        if (!in_array($cipher, openssl_get_cipher_methods())) {
-            throw new Exception($cipher . ' is not supported by this OpenSSL install.');
+        if (!in_array($cipher, openssl_get_cipher_methods(), true)) {
+            throw new RuntimeException($cipher . ' is not supported by this OpenSSL install.');
         }
 
         // Derive all needed parameters for AES-128-GCM encryption
-        $this->encryptionSalt = random_bytes(16);
+        try {
+            $this->encryptionSalt = random_bytes(16);
+        } catch (\Exception $e) {
+            throw new RuntimeException('Could not generate a cryptographically secure salt.');
+        }
         $ikm = $this->getIkm();
-        $nonce = hash_hkdf('sha256', $ikm, 12, 'Content-Encoding: nonce' . chr(0), $this->encryptionSalt);
-        $contentEncryptionKey = hash_hkdf('sha256', $ikm, 16, 'Content-Encoding: aes128gcm' . chr(0), $this->encryptionSalt);
+        $nonce = hash_hkdf('sha256', $ikm, 12, 'Content-Encoding: nonce' . "\x00", $this->encryptionSalt);
+        $contentEncryptionKey = hash_hkdf('sha256', $ikm, 16, 'Content-Encoding: aes128gcm' . "\x00", $this->encryptionSalt);
 
         // Add padding to prevent figuring out the content by its size
         $this->payload .= $this->getPadding(static::PAYLOAD_MAX_LENGTH - mb_strlen($this->payload, '8bit'));
@@ -164,7 +170,7 @@ class Aes128Gcm implements NotificationPayload
         $sharedSecret = openssl_pkey_derive($this->receiverPublicKey, $this->privateKey);
         $publicKey = KeyConverter::unserializePublic($this->publicKey);
         $receiverPublicKey = KeyConverter::unserializePublic($this->receiverPublicKey);
-        $info = 'WebPush: info' . chr(0) . $receiverPublicKey . $publicKey;
+        $info = 'WebPush: info' . "\x00" . $receiverPublicKey . $publicKey;
 
         return hash_hkdf('sha256', $sharedSecret, 32, $info, $this->authKey);
     }

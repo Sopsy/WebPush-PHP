@@ -21,7 +21,7 @@ class KeyConverter
      */
     public static function p256PublicKeyToPem(string $key): string
     {
-        if (mb_substr($key, 0, 1, '8bit') !== "\x04") {
+        if (mb_strpos($key, "\x04", 0,  '8bit') !== 0) {
             throw new InvalidArgumentException('Only uncompressed keys are supported (starting with 0x04)');
         }
 
@@ -48,10 +48,10 @@ class KeyConverter
      */
     public static function getPublicFromPrivate(string $privateKey): string
     {
-        $privateKey = openssl_pkey_get_private($privateKey);
+        $key = openssl_pkey_get_private($privateKey);
         $publicKey = false;
-        if ($privateKey) {
-            $publicKey = openssl_pkey_get_details($privateKey);
+        if ($key) {
+            $publicKey = openssl_pkey_get_details($key);
         }
 
         if (!$publicKey || empty($publicKey['key'])) {
@@ -84,7 +84,7 @@ class KeyConverter
     public static function unserializePublic(string $publicKey): string
     {
         $publicKey = static::pem2der($publicKey);
-        return KeyConverter::stripDerHeader($publicKey);
+        return static::stripDerHeader($publicKey);
     }
 
     /**
@@ -97,7 +97,7 @@ class KeyConverter
     {
         $headerLength = mb_strlen(static::$derHeader, '8bit');
 
-        if (mb_substr($key, 0, $headerLength, '8bit') !== static::$derHeader) {
+        if (mb_strpos($key, static::$derHeader, 0, '8bit') !== 0) {
             throw new InvalidArgumentException('Invalid DER file, not secp256r1 header.');
         }
 
@@ -123,7 +123,7 @@ class KeyConverter
         $start = 2;
         if ($rLen === 33) {
             // If length is 33, the first data byte is just a 0x00 padding, ignore it
-            $start += 1;
+            ++$start;
         }
         $r = mb_substr($key, $start, 32, '8bit');
 
@@ -134,7 +134,7 @@ class KeyConverter
         $start = 2 + $rLen + 2;
         if ($sLen === 33) {
             // If length is 33, the first data byte is just a 0x00 padding, ignore it
-            $start += 1;
+            ++$start;
         }
 
         $s = mb_substr($key, $start, null, '8bit');
@@ -151,8 +151,9 @@ class KeyConverter
      */
     public static function pem2der(string $pem): string
     {
-        $begin = "KEY-----";
-        $end = "-----END";
+        $begin = 'KEY-----';
+        $end = '-----END';
+
         $pem = mb_substr($pem, mb_strpos($pem, $begin, 0, '8bit') + mb_strlen($begin, '8bit'), null, '8bit');
         $pem = mb_substr($pem, 0, mb_strpos($pem, $end, 0, '8bit'), '8bit');
         $der = base64_decode($pem);

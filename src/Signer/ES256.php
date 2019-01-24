@@ -20,10 +20,10 @@ class ES256 implements Signer
      */
     public function __construct(string $privateKey)
     {
-        if (substr($privateKey, 0, 5) == '-----') {
+        if (strpos($privateKey, '-----') === 0) {
             // Assume string
             $this->privateKey = $privateKey;
-        } elseif (!strpos($privateKey, "\n")) {
+        } elseif (strpos($privateKey, "\n") === false) {
             // Assume file
             $this->setPrivateKeyFromFile($privateKey);
         } else {
@@ -45,7 +45,8 @@ class ES256 implements Signer
         // SHA256 DER signature is always 70-72 bytes:
         // 2 byte DER header + 2 byte R header (+ 1 byte R padding if first R byte is >0x7F) + 32 byte R data
         // + 2 byte S header (+ 1 byte S padding if first S byte is >0x7F) + 32 byte S data
-        if (mb_strlen($signature, '8bit') < 70 || mb_strlen($signature, '8bit') > 72) {
+        $signatureLength = mb_strlen($signature, '8bit');
+        if ($signatureLength < 70 || $signatureLength > 72) {
             throw new SignerException('Invalid signature response from OpenSSL');
         }
 
@@ -67,7 +68,7 @@ class ES256 implements Signer
      */
     protected function setPrivateKeyFromFile(string $keyFile): void
     {
-        $f = fopen($keyFile, 'r');
+        $f = fopen($keyFile, 'rb');
         if (!$f) {
             throw new KeyFileException('Could not open key file "' . $keyFile . '".');
         }
@@ -84,7 +85,9 @@ class ES256 implements Signer
                     throw new KeyFileException('Invalid key file "' . $keyFile . '", expecting a singular Base64 encoded PEM EC private key file.');
                 }
                 continue;
-            } elseif (substr($line, 0, 5) == '-----') {
+            }
+
+            if (strpos($line, '-----') === 0) {
                 break;
             }
 
@@ -98,7 +101,7 @@ class ES256 implements Signer
 
         $key = "-----BEGIN EC PRIVATE KEY-----\n"
             . chunk_split($key, 64, "\n")
-            . "-----END EC PRIVATE KEY-----";
+            . '-----END EC PRIVATE KEY-----';
 
         $this->privateKey = $key;
     }

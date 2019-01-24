@@ -11,10 +11,10 @@ use InvalidArgumentException;
 class OpenSSL implements KeyFactory
 {
     // Define key types
-    const KEYTYPE_EC = 1;
+    public const KEYTYPE_EC = 1;
 
     // Curve types
-    const CURVE_P256 = 1;
+    public const CURVE_P256 = 1;
 
     protected $keyType;
     protected $curve;

@@ -14,7 +14,7 @@ class Notification
     protected $endpoint;
     protected $serverPublicKey;
     protected $payload;
-    protected $ttl = 2419200;
+    protected $ttl;
     protected $urgency;
     protected $topic;
 
@@ -24,25 +24,35 @@ class Notification
      * @param JwtGenerator $jwt
      * @param string $endpoint Full endpoint URL from the browser
      * @param string $serverKey The server private key in PEM format
+     * @param int $ttl TTL value in seconds - How long should the push service try to deliver the message. A value of 0 will try to deliver it once immediately and gives up if it fails.
      * @throws KeyFileException if the conversion of a PEM key to DER fails, maybe due to an invalid key supplied
      */
-    public function __construct(JwtGenerator $jwt, string $endpoint, string $serverKey)
+    public function __construct(JwtGenerator $jwt, string $endpoint, string $serverKey, int $ttl = 2419200)
     {
-        if (!filter_var($endpoint, FILTER_VALIDATE_URL)) {
+        if (strpos($endpoint, 'https://') !== 0) {
+            return false;
+        }
+
+        if (!$this->validateEndpointUrl($endpoint)) {
             throw new InvalidArgumentException('Invalid endpoint URL');
+        }
+
+        if ($ttl < 0) {
+            throw new InvalidArgumentException('TTL cannot be negative.');
         }
 
         $this->jwt = $jwt;
         $this->endpoint = $endpoint;
         $this->serverPublicKey = KeyConverter::unserializePublicFromPrivate($serverKey);
+        $this->ttl = $ttl;
     }
 
     /**
      * Set the notification payload.
      *
-     * @param null|NotificationPayload $payload null for no payload
+     * @param NotificationPayload $payload null for no payload
      */
-    public function setPayload(?NotificationPayload $payload)
+    public function setPayload(NotificationPayload $payload): void
     {
         $this->payload = $payload;
     }
@@ -50,25 +60,11 @@ class Notification
     /**
      * Set the notification urgency, use reasonable values to save users' battery.
      *
-     * @param null|NotificationUrgency $urgency very-low, low, normal or high, null for default
+     * @param NotificationUrgency $urgency very-low, low, normal or high, null for default
      */
-    public function setUrgency(?NotificationUrgency $urgency)
+    public function setUrgency(NotificationUrgency $urgency): void
     {
         $this->urgency = $urgency;
-    }
-
-    /**
-     * How long should the push service try to deliver the message.
-     * A value of 0 will try to deliver it once immediately and gives up if it fails.
-     *
-     * @param int $ttl TTL value in seconds
-     */
-    public function setTtl(int $ttl)
-    {
-        if ($ttl < 0) {
-            throw new InvalidArgumentException('TTL cannot be negative.');
-        }
-        $this->ttl = $ttl;
     }
 
     /**
@@ -76,10 +72,10 @@ class Notification
      * with the same topic is shown to the user if there is multiple undelivered notifications in queue
      * e.g. due to user being offline.
      *
-     * @param null|string $topic
+     * @param string $topic
      * @throws InvalidArgumentException if the topic length exceeds 32 bytes or contains invalid characters
      */
-    public function setTopic(?string $topic): void
+    public function setTopic(string $topic): void
     {
         if (mb_strlen($topic, '8bit') > 32) {
             throw new InvalidArgumentException('Topic too long');
@@ -127,7 +123,7 @@ class Notification
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
@@ -144,5 +140,21 @@ class Notification
         curl_close($ch);
 
         return $result !== false;
+    }
+
+    private function validateEndpointUrl($url): bool
+    {
+        $url = trim($url);
+
+        // All endpoints should always use HTTPS
+        if (strpos($url, 'https://') !== 0) {
+            return false;
+        }
+
+        /**
+         * @noinspection BypassedUrlValidationInspection
+         * Prior strpos validation of protocol should make us safe already
+         */
+        return filter_var($url, FILTER_VALIDATE_URL) !== false;
     }
 }
