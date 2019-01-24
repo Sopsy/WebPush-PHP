@@ -75,16 +75,42 @@ class KeyConverter
     }
 
     /**
-     * Returns the public key serialized to bytes
+     * Returns the public key serialized to bytes from a PEM key
      *
      * @param string $publicKey PEM public key
-     * @return string PEM public key
+     * @return string raw public key in binary format
      * @throws KeyFileException if the conversion of PEM to DER fails
+     * @throws InvalidArgumentException if the string does not contain a valid secp256r1 key
      */
-    public static function unserializePublic(string $publicKey): string
+    public static function unserializePublicPem(string $publicKey): string
     {
         $publicKey = static::pem2der($publicKey);
+        return static::unserializePublicDer($publicKey);
+    }
+
+    /**
+     * Returns the public key serialized to bytes from a DER key
+     *
+     * @param string $publicKey DER public key
+     * @return string raw public key in binary format
+     * @throws InvalidArgumentException if the string is not a valid DER secp256r1 key
+     */
+    public static function unserializePublicDer(string $publicKey): string
+    {
         return static::stripDerHeader($publicKey);
+    }
+
+    /**
+     * Returns the public key serialized to bytes from a base64 encoded DER key
+     *
+     * @param string $publicKey base64 encoded DER public key
+     * @return string raw public key in binary format
+     * @throws InvalidArgumentException if the string is not a valid DER secp256r1 key
+     */
+    public static function unserializePublicBase64(string $publicKey): string
+    {
+        $publicKey = base64_decode($publicKey);
+        return static::unserializePublicDer($publicKey);
     }
 
     /**
@@ -92,6 +118,7 @@ class KeyConverter
      *
      * @param string $key DER formatted secp256r1 key
      * @return string Key without the DER header
+     * @throws InvalidArgumentException if the string is not a valid DER secp256r1 key
      */
     public static function stripDerHeader(string $key): string
     {
