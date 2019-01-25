@@ -55,7 +55,7 @@ class KeyConverter
         }
 
         if (!$publicKey || empty($publicKey['key'])) {
-            throw new InvalidArgumentException('Invalid private key, maybe not in PEM format');
+            throw new InvalidArgumentException('Invalid private key, maybe not in PEM format (' . openssl_error_string() . ')');
         }
 
         return $publicKey['key'];
