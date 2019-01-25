@@ -168,8 +168,8 @@ class Aes128Gcm implements NotificationPayload
     protected function getIkm(): string
     {
         $sharedSecret = openssl_pkey_derive($this->receiverPublicKey, $this->privateKey);
-        $publicKey = KeyConverter::unserializePublic($this->publicKey);
-        $receiverPublicKey = KeyConverter::unserializePublic($this->receiverPublicKey);
+        $publicKey = KeyConverter::unserializePublicPem($this->publicKey);
+        $receiverPublicKey = KeyConverter::unserializePublicPem($this->receiverPublicKey);
         $info = 'WebPush: info' . "\x00" . $receiverPublicKey . $publicKey;
 
         return hash_hkdf('sha256', $sharedSecret, 32, $info, $this->authKey);
@@ -184,7 +184,7 @@ class Aes128Gcm implements NotificationPayload
      */
     protected function getContentHeader(): string
     {
-        $publicKey = KeyConverter::unserializePublic($this->publicKey);
+        $publicKey = KeyConverter::unserializePublicPem($this->publicKey);
 
         $this->contentHeader = $this->encryptionSalt . pack('N', 4096)
             . chr(mb_strlen($publicKey, '8bit')) . $publicKey;

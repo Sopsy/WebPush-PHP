@@ -71,7 +71,7 @@ class KeyConverter
     public static function unserializePublicFromPrivate(string $privateKey): string
     {
         $publicKey = static::getPublicFromPrivate($privateKey);
-        return static::unserializePublic($publicKey);
+        return static::unserializePublicPem($publicKey);
     }
 
     /**

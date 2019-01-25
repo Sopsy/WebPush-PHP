@@ -15,7 +15,7 @@ class ES256 implements Signer
     /**
      * ES256 constructor.
      *
-     * @param string $privateKey Server private key in PEM format
+     * @param string $privateKey Server private key in PEM format or a path to a file
      * @throws KeyFileException if the key file is in invalid format
      */
     public function __construct(string $privateKey)
