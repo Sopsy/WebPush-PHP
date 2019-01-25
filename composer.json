@@ -8,7 +8,10 @@
     "autoload": {
         "psr-4": {
             "Sopsy\\WebPush\\": "src/"
-        }
+        },
+        "files": [
+            "src/Polyfills.php"
+        ]
     },
     "authors": [
         {

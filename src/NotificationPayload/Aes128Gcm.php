@@ -50,7 +50,7 @@ class Aes128Gcm implements NotificationPayload
         $this->publicKey = $keyFactory->getPublicKey();
 
         // Polyfill for PHP7.2 (this new function in PHP7.3 is exactly what we need)
-        if (!function_exists('openssl_pkey_derive')) {
+        if (!function_exists(__CLASS__ . 'openssl_pkey_derive')) {
             function openssl_pkey_derive($peer_pub_key, $priv_key, $keylen = null) {
 
                 if ($keylen !== null) {
