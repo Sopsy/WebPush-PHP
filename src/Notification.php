@@ -6,6 +6,7 @@ namespace Sopsy\WebPush;
 use InvalidArgumentException;
 use Sopsy\Base64Url\Base64Url;
 use Sopsy\WebPush\Exception\KeyFileException;
+use Sopsy\WebPush\Exception\NotificationException;
 use Sopsy\WebPush\Exception\SignerException;
 
 class Notification
@@ -17,6 +18,16 @@ class Notification
     protected $ttl;
     protected $urgency;
     protected $topic;
+
+    /**
+     * @var $responseCode string Response text from the endpoint after the notification is sent
+     */
+    protected $response;
+
+    /**
+     * @var $responseCode int HTTP response code from the endpoint after the notification is sent
+     */
+    protected $responseCode;
 
     /**
      * Notification constructor.
@@ -128,18 +139,39 @@ class Notification
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
-        $result = curl_exec($ch);
-        $responseCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        echo 'Response code: ' . $responseCode . "\n";
-        if ($responseCode >= 200 && $responseCode <= 299) {
-            // Assume the notification was sent, no logging here
-            echo "Notification sent!\n";
-        }
+        $this->response = curl_exec($ch);
+        $this->responseCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         curl_close($ch);
 
-        return $result !== false;
+        // If response code is between 200 - 299, sending probably succeeded. Otherwise we assume it failed.
+        return $this->responseCode >= 200 && $this->responseCode <= 299;
+    }
+
+    /**
+     * @return int
+     * @throws NotificationException
+     */
+    public function responseCode(): int
+    {
+        if (!$this->responseCode) {
+            throw new NotificationException('This notification is not sent, so we do not have a response code.');
+        }
+
+        return $this->responseCode;
+    }
+
+    /**
+     * @return string
+     * @throws NotificationException
+     */
+    public function response(): string
+    {
+        if (!$this->responseCode) {
+            throw new NotificationException('This notification is not sent, so we do not have a response.');
+        }
+
+        return $this->response;
     }
 
     private function validateEndpointUrl($url): bool
