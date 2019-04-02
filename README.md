@@ -12,22 +12,23 @@ $receiverPublicKey = Base64Url::decode('PublicKeyFromBrowser');
 $serverKey = file_get_contents('ec-privatekey.pem');
 $receiverPublicPem = KeyConverter::p256PublicKeyToPem($receiverPublicKey);
 
-$signer = new ES256($serverKey);
-
 $endpointParts = parse_url($endpoint);
-$jwt = new JwtGenerator($signer);
-$jwt->setPayload([
-    'aud' => $endpointParts['scheme'] . '://' . $endpointParts['host'],
-    'exp' => time() + (3600 * 12), // Should be less than 24 hours, see JWT TTL
-    'sub' => 'https://myurl.com/',
-    //or: 'sub' => 'mailto:email@example.com',
-]);
+
+$jwt = new WebPushJwt(
+    new ES256($serverKey), // Signer
+    $endpointParts['scheme'] . '://' . $endpointParts['host'], // Audience
+    time() + (3600 * 12), // TTL, should be less than 24 hours
+    'https://myurl.com/', // Subject (or: 'mailto:email@example.com')
+);
 
 $notification = new Notification($jwt, $endpoint, $serverKey);
 
-$payload = new Aes128Gcm(new OpenSSL(), $auth, $receiverPublicPem);
-$payload->set('Hello world!');
-$notification->setPayload($payload);
+$payload = new Aes128Gcm(
+    new OpenSSL(OpenSSL::KEYTYPE_EC, OpenSSL::CURVE_P256), // Key Factory
+    $auth, // User auth key
+    $receiverPublicPem, // User public key
+    'Hello world!' // Data
+  );
 
-$notification->send();
+$notification->send($payload);
 ```

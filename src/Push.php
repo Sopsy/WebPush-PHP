@@ -5,43 +5,46 @@ namespace Sopsy\WebPush;
 
 use InvalidArgumentException;
 use Sopsy\Base64Url\Base64Url;
+use Sopsy\WebPush\Contract\Jwt;
+use Sopsy\WebPush\Contract\MessagePayload;
+use Sopsy\WebPush\Contract\MessageUrgency;
 use Sopsy\WebPush\Exception\KeyFileException;
 use Sopsy\WebPush\Exception\NotificationException;
 use Sopsy\WebPush\Exception\SignerException;
 
-class Notification
+final class Push
 {
-    protected $jwt;
-    protected $endpoint;
-    protected $serverPublicKey;
-    protected $payload;
-    protected $ttl;
-    protected $urgency;
-    protected $topic;
+    private $jwt;
+    private $endpoint;
+    private $serverPublicKey;
+    private $payload;
+    private $ttl;
+    private $urgency;
+    private $topic;
 
     /**
      * @var $responseCode string Response text from the endpoint after the notification is sent
      */
-    protected $response;
+    private $response;
 
     /**
      * @var $responseCode int HTTP response code from the endpoint after the notification is sent
      */
-    protected $responseCode;
+    private $responseCode;
 
     /**
      * Notification constructor.
      *
-     * @param JwtGenerator $jwt
+     * @param Jwt $jwt
      * @param string $endpoint Full endpoint URL from the browser
      * @param string $serverKey The server private key in PEM format
      * @param int $ttl TTL value in seconds - How long should the push service try to deliver the message. A value of 0 will try to deliver it once immediately and gives up if it fails.
      * @throws KeyFileException if the conversion of a PEM key to DER fails, maybe due to an invalid key supplied
      */
-    public function __construct(JwtGenerator $jwt, string $endpoint, string $serverKey, int $ttl = 2419200)
+    public function __construct(Jwt $jwt, string $endpoint, string $serverKey, int $ttl = 2419200)
     {
         if (strpos($endpoint, 'https://') !== 0) {
-            return false;
+            throw new InvalidArgumentException('Invalid endpoint URL');
         }
 
         if (!$this->validateEndpointUrl($endpoint)) {
@@ -59,21 +62,11 @@ class Notification
     }
 
     /**
-     * Set the notification payload.
-     *
-     * @param NotificationPayload $payload null for no payload
-     */
-    public function setPayload(NotificationPayload $payload): void
-    {
-        $this->payload = $payload;
-    }
-
-    /**
      * Set the notification urgency, use reasonable values to save users' battery.
      *
-     * @param NotificationUrgency $urgency very-low, low, normal or high, null for default
+     * @param MessageUrgency $urgency very-low, low, normal or high
      */
-    public function setUrgency(NotificationUrgency $urgency): void
+    public function setUrgency(MessageUrgency $urgency): void
     {
         $this->urgency = $urgency;
     }
@@ -102,15 +95,16 @@ class Notification
     /**
      * Send the Push Notification to the specified endpoint
      *
+     * @param MessagePayload $payload
      * @return bool
-     * @throws SignerException if signing the JWT fails
+     * @throws SignerException if signing the Jwt fails
      */
-    public function send(): bool
+    public function send(MessagePayload $payload): bool
     {
         $ch = curl_init();
 
         $headers = [
-            'Authorization: vapid t=' . $this->jwt->getSignedJwt() . ', k=' . Base64Url::encode($this->serverPublicKey),
+            'Authorization: vapid t=' . $this->jwt->signedJwt() . ', k=' . Base64Url::encode($this->serverPublicKey),
             'TTL: ' . $this->ttl,
         ];
 
@@ -118,18 +112,14 @@ class Notification
             $headers[] = 'Topic: ' . $this->topic;
         }
 
-        if ($this->urgency instanceof NotificationUrgency) {
-            $headers[] = 'Urgency: ' . $this->urgency->getValue();
+        if ($this->urgency instanceof MessageUrgency) {
+            $headers[] = 'Urgency: ' . $this->urgency->name();
         }
 
-        if ($this->payload instanceof NotificationPayload) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $this->payload->get());
-
-            $headers[] = 'Content-Type: ' . $this->payload->getContentType();
-            $headers[] = 'Content-Encoding: ' . $this->payload->getContentEncoding();
-            $headers[] = 'Content-Length: ' . $this->payload->getContentLength();
-        }
-
+        $headers[] = 'Content-Type: ' . $payload->contentType();
+        $headers[] = 'Content-Encoding: ' . $payload->contentEncoding();
+        $headers[] = 'Content-Length: ' . $payload->contentLength();
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload->payload());
         curl_setopt($ch, CURLOPT_URL, $this->endpoint);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);

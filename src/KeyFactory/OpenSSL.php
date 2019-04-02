@@ -4,35 +4,38 @@ declare(strict_types=1);
 namespace Sopsy\WebPush\KeyFactory;
 
 use Sopsy\WebPush\Exception\KeyCreateException;
-use Sopsy\WebPush\KeyFactory;
-use RuntimeException;
-use InvalidArgumentException;
+use Sopsy\WebPush\Contract\KeyFactory;
 
-class OpenSSL implements KeyFactory
+final class OpenSSL implements KeyFactory
 {
-    // Define key types
+    // Key types
     public const KEYTYPE_EC = 1;
 
     // Curve types
     public const CURVE_P256 = 1;
 
-    protected $keyType;
-    protected $curve;
-    protected $privateKey;
-    protected $publicKey;
+    /* @var int */
+    private $keyType;
+    /* @var string */
+    private $curve;
+    /* @var string */
+    private $privateKey;
+    /* @var string */
+    private $publicKey;
 
     /**
-     * Only function of this is to check that the openssl PHP extension is loaded.
+     * Check that the openssl PHP extension is loaded and set parameters for the new key pair, e.g. key type.
+     *
+     * @param int $keyType Key type, implementation specific
+     * @param int $params Implementation specific key parameters, usually bitwise flags
+     * @throws KeyCreateException For invalid keyType or params
      */
-    public function __construct()
+    public function __construct(int $keyType, int $params = 0)
     {
         if (!extension_loaded('openssl')) {
-            throw new RuntimeException('OpenSSL extension is not loaded');
+            throw new KeyCreateException('OpenSSL extension is not loaded');
         }
-    }
 
-    public function setParameters(int $keyType, int $params = 0): void
-    {
         if ($keyType === static::KEYTYPE_EC) {
             $this->keyType = OPENSSL_KEYTYPE_EC;
         } else {
@@ -45,8 +48,29 @@ class OpenSSL implements KeyFactory
         }
     }
 
-    public function createKey(): void
+    public function privateKey(): string
     {
+        $this->createKey();
+
+        return $this->privateKey;
+    }
+
+    public function publicKey(): string
+    {
+        $this->createKey();
+
+        return $this->publicKey;
+    }
+
+    /**
+     * @throws KeyCreateException if the key creation fails
+     */
+    private function createKey(): void
+    {
+        if (!empty($this->privateKey)) {
+            return;
+        }
+
         $key = openssl_pkey_new([
             'curve_name' => $this->curve,
             'private_key_type' => $this->keyType,
@@ -57,35 +81,17 @@ class OpenSSL implements KeyFactory
 
         $details = openssl_pkey_get_details($key);
         if (!$details) {
-            throw new RuntimeException('Could not get details for the new key');
+            throw new KeyCreateException('Could not get details for the new key');
         }
 
         $private = openssl_pkey_export($key, $privateKey);
         if (!$private) {
-            throw new RuntimeException('Could not export the private key');
+            throw new KeyCreateException('Could not export the private key');
         }
 
         openssl_pkey_free($key);
 
         $this->privateKey = $privateKey;
         $this->publicKey = $details['key'];
-    }
-
-    public function getPrivateKey(): string
-    {
-        if (empty($this->privateKey)) {
-            throw new InvalidArgumentException('Key not created');
-        }
-
-        return $this->privateKey;
-    }
-
-    public function getPublicKey(): string
-    {
-        if (empty($this->publicKey)) {
-            throw new InvalidArgumentException('Key not created');
-        }
-
-        return $this->publicKey;
     }
 }

@@ -4,13 +4,13 @@ declare(strict_types=1);
 namespace Sopsy\WebPush\Signer;
 
 use Sopsy\WebPush\KeyConverter;
-use Sopsy\WebPush\Signer;
+use Sopsy\WebPush\Contract\Signer;
 use Sopsy\WebPush\Exception\SignerException;
 use Sopsy\WebPush\Exception\KeyFileException;
 
-class ES256 implements Signer
+final class ES256 implements Signer
 {
-    protected $privateKey;
+    private $privateKey;
 
     /**
      * ES256 constructor.
@@ -31,12 +31,12 @@ class ES256 implements Signer
         }
     }
 
-    public function getAlgorithmName(): string
+    public function algorithmName(): string
     {
         return 'ES256';
     }
 
-    public function getSignature(string $jwtHeader, string $jwtPayload): string
+    public function signature(string $jwtHeader, string $jwtPayload): string
     {
         $unsignedToken = $jwtHeader . '.' . $jwtPayload;
 
@@ -53,20 +53,20 @@ class ES256 implements Signer
         $signature = KeyConverter::stripDerSignatureHeaders($signature);
 
         if (empty($signature) || mb_strlen($signature, '8bit') !== 64) {
-            throw new SignerException('Signing the JWT failed for an unknown reason');
+            throw new SignerException('Signing the Jwt failed for an unknown reason');
         }
 
         return $signature;
     }
 
     /**
-     * Sets the private key to be used when signing the JWT from $keyFile
+     * Sets the private key to be used when signing the Jwt from $keyFile
      * or throws a FileNotFoundException if the file does not exist.
      *
      * @param string $keyFile The file to read, an EC private key in PEM format
      * @throws KeyFileException if the requested key file does not exist or is in invalid format
      */
-    protected function setPrivateKeyFromFile(string $keyFile): void
+    private function setPrivateKeyFromFile(string $keyFile): void
     {
         $f = fopen($keyFile, 'rb');
         if (!$f) {

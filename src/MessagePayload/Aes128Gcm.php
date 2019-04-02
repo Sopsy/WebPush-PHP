@@ -1,75 +1,80 @@
 <?php
 declare(strict_types=1);
 
-namespace Sopsy\WebPush\NotificationPayload;
+namespace Sopsy\WebPush\MessagePayload;
 
 use RuntimeException;
-use InvalidArgumentException;
 use Sopsy\WebPush\Exception\KeyCreateException;
 use Sopsy\WebPush\Exception\KeyFileException;
+use Sopsy\WebPush\Exception\PayloadException;
 use Sopsy\WebPush\KeyConverter;
-use Sopsy\WebPush\KeyFactory;
-use Sopsy\WebPush\NotificationPayload;
+use Sopsy\WebPush\Contract\KeyFactory;
+use Sopsy\WebPush\Contract\MessagePayload;
 
-class Aes128Gcm implements NotificationPayload
+final class Aes128Gcm implements MessagePayload
 {
-    protected $payload;
-    protected $receiverPublicKey;
-    protected $authKey;
-    protected $privateKey;
-    protected $publicKey;
+    /* @var string */
+    private $payload;
+    /* @var string */
+    private $receiverPublicKey;
+    /* @var string */
+    private $authKey;
+    /* @var string */
+    private $privateKey;
+    /* @var string */
+    private $publicKey;
 
-    protected $encryptedPayload;
-    protected $contentHeader;
-    protected $encryptionSalt;
+    /* @var string */
+    private $encryptedPayload;
+    /* @var string */
+    private $contentHeader;
+    /* @var string */
+    private $encryptionSalt;
 
     // 4096 bytes - content header (86 bytes) - AEAD authentication tag (16 bytes) - padding delimiter (1 byte)
-    protected const PAYLOAD_MAX_LENGTH = 3993;
+    private const PAYLOAD_MAX_LENGTH = 3993;
 
     /**
      * Aes128Gcm constructor.
      *
-     * @param KeyFactory $keyFactory
+     * @param \Sopsy\WebPush\Contract\KeyFactory $keyFactory
      * @param string $authKey Auth key from the push subscription, Base64Url decoded
      * @param string $receiverPublicKey Public key from the push subscription in PEM format
+     * @param string $payload Payload to be encrypted
      * @throws KeyCreateException
+     * @throws PayloadException
      */
     public function __construct(
         KeyFactory $keyFactory,
         string $authKey,
-        string $receiverPublicKey
+        string $receiverPublicKey,
+        string $payload
     )
     {
+        if (strlen($payload) > static::PAYLOAD_MAX_LENGTH) {
+            throw new PayloadException(sprintf('Payload too large for Web Push, max size is %d bytes', static::PAYLOAD_MAX_LENGTH));
+        }
+
+        $this->payload = $payload;
         $this->authKey = $authKey;
         $this->receiverPublicKey = $receiverPublicKey;
 
         // Create a new ECDH key pair
-        $keyFactory->setParameters(KeyFactory\OpenSSL::KEYTYPE_EC, KeyFactory\OpenSSL::CURVE_P256);
-        $keyFactory->createKey();
-        $this->privateKey = $keyFactory->getPrivateKey();
-        $this->publicKey = $keyFactory->getPublicKey();
+        $this->privateKey = $keyFactory->privateKey();
+        $this->publicKey = $keyFactory->publicKey();
     }
 
-    public function set(string $payload): void
-    {
-        if (strlen($payload) > static::PAYLOAD_MAX_LENGTH) {
-            throw new InvalidArgumentException(sprintf('Payload too large for Web Push, max size is %d bytes', static::PAYLOAD_MAX_LENGTH));
-        }
-
-        $this->payload = $payload;
-    }
-
-    public function getContentType(): string
+    public function contentType(): string
     {
         return 'application/octet-stream';
     }
 
-    public function getContentEncoding(): string
+    public function contentEncoding(): string
     {
         return 'aes128gcm';
     }
 
-    public function getContentLength(): int
+    public function contentLength(): int
     {
         return mb_strlen($this->encryptedPayload, '8bit');
     }
@@ -81,7 +86,7 @@ class Aes128Gcm implements NotificationPayload
      * @throws RuntimeException in case aes-128-gcm is not supported on this install
      * @throws KeyFileException
      */
-    public function get(): string
+    public function payload(): string
     {
         if (!empty($this->encryptedPayload)) {
             return $this->encryptedPayload;
@@ -97,7 +102,7 @@ class Aes128Gcm implements NotificationPayload
      * @throws RuntimeException in case aes-128-gcm is not supported on this install
      * @throws KeyFileException
      */
-    protected function encrypt(): string
+    private function encrypt(): string
     {
         $cipher = 'aes-128-gcm';
 
@@ -111,18 +116,18 @@ class Aes128Gcm implements NotificationPayload
         } catch (\Exception $e) {
             throw new RuntimeException('Could not generate a cryptographically secure salt.');
         }
-        $ikm = $this->getIkm();
+        $ikm = $this->ikm();
         $nonce = hash_hkdf('sha256', $ikm, 12, 'Content-Encoding: nonce' . "\x00", $this->encryptionSalt);
         $contentEncryptionKey = hash_hkdf('sha256', $ikm, 16, 'Content-Encoding: aes128gcm' . "\x00", $this->encryptionSalt);
 
         // Add padding to prevent figuring out the content by its size
-        $this->payload .= $this->getPadding(static::PAYLOAD_MAX_LENGTH - mb_strlen($this->payload, '8bit'));
+        $this->payload .= $this->padding(static::PAYLOAD_MAX_LENGTH - mb_strlen($this->payload, '8bit'));
 
         // Encrypt
         $encrypted = openssl_encrypt($this->payload, $cipher, $contentEncryptionKey, OPENSSL_RAW_DATA, $nonce, $tag);
 
         // Payload = Header + encrypted content + AEAD authentication tag
-        $this->encryptedPayload = $this->getContentHeader() . $encrypted . $tag;
+        $this->encryptedPayload = $this->contentHeader() . $encrypted . $tag;
 
         return $this->encryptedPayload;
     }
@@ -134,7 +139,7 @@ class Aes128Gcm implements NotificationPayload
      * @param int $length Padding length, payload usually padded to max size for security
      * @return string Padding string which should be concatenated to the plaintext payload
      */
-    protected function getPadding(int $length): string
+    private function padding(int $length): string
     {
         return "\x02" . str_repeat("\x00", $length);
     }
@@ -146,7 +151,7 @@ class Aes128Gcm implements NotificationPayload
      * @return string HKDF derived key
      * @throws KeyFileException if the conversion of a PEM key to DER fails - should never happen
      */
-    protected function getIkm(): string
+    private function ikm(): string
     {
         $sharedSecret = openssl_pkey_derive($this->receiverPublicKey, $this->privateKey);
         $publicKey = KeyConverter::unserializePublicPem($this->publicKey);
@@ -163,13 +168,11 @@ class Aes128Gcm implements NotificationPayload
      * @return string Content header string in binary format, prepended to the encrypted payload
      * @throws KeyFileException if the conversion of a PEM key to DER fails - should never happen
      */
-    protected function getContentHeader(): string
+    private function contentHeader(): string
     {
         $publicKey = KeyConverter::unserializePublicPem($this->publicKey);
 
-        $this->contentHeader = $this->encryptionSalt . pack('N', 4096)
+        return $this->encryptionSalt . pack('N', 4096)
             . chr(mb_strlen($publicKey, '8bit')) . $publicKey;
-
-        return $this->contentHeader;
     }
 }

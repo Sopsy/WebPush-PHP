@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Sopsy\WebPush;
+namespace Sopsy\WebPush\Contract;
 
-Interface NotificationUrgency
+Interface MessageUrgency
 {
     /**
      * Returns the urgency name as a string
@@ -11,5 +11,5 @@ Interface NotificationUrgency
      *
      * @return string
      */
-    public function getValue(): string;
+    public function name(): string;
 }

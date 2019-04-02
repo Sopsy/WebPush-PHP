@@ -6,10 +6,10 @@ namespace Sopsy\WebPush;
 use InvalidArgumentException;
 use Sopsy\WebPush\Exception\KeyFileException;
 
-class KeyConverter
+final class KeyConverter
 {
     // DER header - for secp256r1 it's always this and we don't need anything else for Web Push
-    protected static $derHeader = "\x30\x59\x30\x13\x06\x07\x2a\x86\x48\xce\x3d\x02\x01\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07\x03\x42\x00";
+    private static $derHeader = "\x30\x59\x30\x13\x06\x07\x2a\x86\x48\xce\x3d\x02\x01\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07\x03\x42\x00";
 
     /**
      * OpenSSL requires a header for the key to be usable, the header contains e.g. the curve used.
@@ -133,7 +133,7 @@ class KeyConverter
 
     /**
      * A stupid function which handles only P256 DER signature file conversion to a plain 64 byte signature
-     * to be used when signing a JWT.
+     * to be used when signing a Jwt.
      *
      * @param string $key
      * @return string signature in binary format
