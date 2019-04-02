@@ -8,33 +8,20 @@ use Sopsy\Base64Url\Base64Url;
 use Sopsy\WebPush\Contract\Jwt;
 use Sopsy\WebPush\Contract\MessagePayload;
 use Sopsy\WebPush\Contract\MessageUrgency;
+use Sopsy\WebPush\Contract\Response;
 use Sopsy\WebPush\Exception\KeyFileException;
-use Sopsy\WebPush\Exception\NotificationException;
 use Sopsy\WebPush\Exception\SignerException;
 
-final class Push
+final class PushMessage
 {
     private $jwt;
     private $endpoint;
     private $serverPublicKey;
-    private $payload;
     private $ttl;
     private $urgency;
     private $topic;
 
     /**
-     * @var $responseCode string Response text from the endpoint after the notification is sent
-     */
-    private $response;
-
-    /**
-     * @var $responseCode int HTTP response code from the endpoint after the notification is sent
-     */
-    private $responseCode;
-
-    /**
-     * Notification constructor.
-     *
      * @param Jwt $jwt
      * @param string $endpoint Full endpoint URL from the browser
      * @param string $serverKey The server private key in PEM format
@@ -62,7 +49,7 @@ final class Push
     }
 
     /**
-     * Set the notification urgency, use reasonable values to save users' battery.
+     * Set the message urgency, use reasonable values to save users' battery.
      *
      * @param MessageUrgency $urgency very-low, low, normal or high
      */
@@ -72,8 +59,8 @@ final class Push
     }
 
     /**
-     * Set the topic of the push notification. If the push service supports it, only the last notification
-     * with the same topic is shown to the user if there is multiple undelivered notifications in queue
+     * Set the topic of the push message. If the push service supports it, only the last message
+     * with the same topic is shown to the user if there is multiple undelivered messages in queue
      * e.g. due to user being offline.
      *
      * @param string $topic
@@ -93,13 +80,13 @@ final class Push
     }
 
     /**
-     * Send the Push Notification to the specified endpoint
+     * Send the Push Message to the specified endpoint
      *
      * @param MessagePayload $payload
-     * @return bool
+     * @return Response
      * @throws SignerException if signing the Jwt fails
      */
-    public function send(MessagePayload $payload): bool
+    public function send(MessagePayload $payload): Response
     {
         $ch = curl_init();
 
@@ -129,39 +116,14 @@ final class Push
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
-        $this->response = curl_exec($ch);
-        $this->responseCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $response = curl_exec($ch);
+        $responseCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         curl_close($ch);
 
-        // If response code is between 200 - 299, sending probably succeeded. Otherwise we assume it failed.
-        return $this->responseCode >= 200 && $this->responseCode <= 299;
-    }
+        $response = new PushServiceResponse($responseCode, $response);
 
-    /**
-     * @return int
-     * @throws NotificationException
-     */
-    public function responseCode(): int
-    {
-        if (!$this->responseCode) {
-            throw new NotificationException('This notification is not sent, so we do not have a response code.');
-        }
-
-        return $this->responseCode;
-    }
-
-    /**
-     * @return string
-     * @throws NotificationException
-     */
-    public function response(): string
-    {
-        if (!$this->responseCode) {
-            throw new NotificationException('This notification is not sent, so we do not have a response.');
-        }
-
-        return $this->response;
+        return $response;
     }
 
     private function validateEndpointUrl($url): bool

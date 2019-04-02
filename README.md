@@ -17,11 +17,11 @@ $endpointParts = parse_url($endpoint);
 $jwt = new WebPushJwt(
     new ES256($serverKey), // Signer
     $endpointParts['scheme'] . '://' . $endpointParts['host'], // Audience
-    time() + (3600 * 12), // TTL, should be less than 24 hours
+    3600 * 12, // TTL in seconds, should be less than 24 hours
     'https://myurl.com/', // Subject (or: 'mailto:email@example.com')
 );
 
-$notification = new Notification($jwt, $endpoint, $serverKey);
+$message = new PushMessage($jwt, $endpoint, $serverKey);
 
 $payload = new Aes128Gcm(
     new OpenSSL(OpenSSL::KEYTYPE_EC, OpenSSL::CURVE_P256), // Key Factory
@@ -30,5 +30,11 @@ $payload = new Aes128Gcm(
     'Hello world!' // Data
   );
 
-$notification->send($payload);
+$response = $message->send($payload);
+
+if ($response->success()) {
+    echo 'Push sent!';
+} else {
+    echo 'Sending a push failed: (' . $response->code . ') ' . $response->message;
+}
 ```

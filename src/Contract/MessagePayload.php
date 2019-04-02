@@ -29,7 +29,7 @@ interface MessagePayload
     public function contentLength(): int;
 
     /**
-     * Get the payload to be used in a Push Notification POST data as is.
+     * Get the payload to be used in a Push Message POST data as is.
      *
      * @return string
      */
