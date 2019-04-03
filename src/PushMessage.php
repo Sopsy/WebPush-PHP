@@ -39,7 +39,11 @@ final class PushMessage
         }
 
         if ($ttl < 0) {
-            throw new InvalidArgumentException('TTL cannot be negative.');
+            throw new InvalidArgumentException('TTL cannot be negative');
+        }
+
+        if ($ttl > 2419200) {
+            throw new InvalidArgumentException('Max TTL is 2419200 seconds');
         }
 
         $this->jwt = $jwt;
