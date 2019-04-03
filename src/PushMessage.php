@@ -119,9 +119,17 @@ final class PushMessage
         $response = curl_exec($ch);
         $responseCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-        curl_close($ch);
+        if (!is_int($responseCode)) {
+            $responseCode = 0;
+        }
+
+        if ($response === false) {
+            $response = 'CURL error: ' . curl_error($ch);
+        }
 
         $response = new PushServiceResponse($responseCode, $response);
+
+        curl_close($ch);
 
         return $response;
     }
