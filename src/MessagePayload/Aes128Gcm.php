@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Sopsy\WebPush\MessagePayload;
 
+use Exception;
 use RuntimeException;
 use Sopsy\WebPush\Exception\KeyCreateException;
 use Sopsy\WebPush\Exception\KeyFileException;
@@ -27,8 +28,6 @@ final class Aes128Gcm implements MessagePayload
     /* @var string */
     private $encryptedPayload;
     /* @var string */
-    private $contentHeader;
-    /* @var string */
     private $encryptionSalt;
 
     // 4096 bytes - content header (86 bytes) - AEAD authentication tag (16 bytes) - padding delimiter (1 byte)
@@ -37,7 +36,7 @@ final class Aes128Gcm implements MessagePayload
     /**
      * Aes128Gcm constructor.
      *
-     * @param \Sopsy\WebPush\Contract\KeyFactory $keyFactory
+     * @param KeyFactory $keyFactory
      * @param string $authKey Auth key from the push subscription, Base64Url decoded
      * @param string $receiverPublicKey Public key from the push subscription in PEM format
      * @param string $payload Payload to be encrypted
@@ -74,8 +73,19 @@ final class Aes128Gcm implements MessagePayload
         return 'aes128gcm';
     }
 
+    /**
+     * Get the Content-Length for data returned with get(), used as a POST header.
+     *
+     * @return int unsigned
+     * @throws RuntimeException in case aes-128-gcm is not supported on this install
+     * @throws KeyFileException
+     */
     public function contentLength(): int
     {
+        if (empty($this->encryptedPayload)) {
+            $this->encrypt();
+        }
+
         return mb_strlen($this->encryptedPayload, '8bit');
     }
 
@@ -88,21 +98,20 @@ final class Aes128Gcm implements MessagePayload
      */
     public function payload(): string
     {
-        if (!empty($this->encryptedPayload)) {
-            return $this->encryptedPayload;
+        if (empty($this->encryptedPayload)) {
+            $this->encrypt();
         }
 
-        return $this->encrypt();
+        return $this->encryptedPayload;
     }
 
     /**
      * Encrypt the payload with AES-128-GCM
      *
-     * @return string encrypted payload
      * @throws RuntimeException in case aes-128-gcm is not supported on this install
      * @throws KeyFileException
      */
-    private function encrypt(): string
+    private function encrypt(): void
     {
         $cipher = 'aes-128-gcm';
 
@@ -113,7 +122,7 @@ final class Aes128Gcm implements MessagePayload
         // Derive all needed parameters for AES-128-GCM encryption
         try {
             $this->encryptionSalt = random_bytes(16);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw new RuntimeException('Could not generate a cryptographically secure salt.');
         }
         $ikm = $this->ikm();
@@ -128,8 +137,6 @@ final class Aes128Gcm implements MessagePayload
 
         // Payload = Header + encrypted content + AEAD authentication tag
         $this->encryptedPayload = $this->contentHeader() . $encrypted . $tag;
-
-        return $this->encryptedPayload;
     }
 
     /**
