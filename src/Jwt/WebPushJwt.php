@@ -30,7 +30,7 @@ final class WebPushJwt implements Jwt
         /** @noinspection BypassedUrlValidationInspection
          *  Not going to create any security issues.
          */
-        if (filter_var($audience, FILTER_VALIDATE_URL)) {
+        if (!filter_var($audience, FILTER_VALIDATE_URL)) {
             throw new JwtException('Invalid audience "' . $audience . '": Not a valid URL');
         }
 
@@ -41,7 +41,7 @@ final class WebPushJwt implements Jwt
         /** @noinspection BypassedUrlValidationInspection
          *  Not going to create any security issues.
          */
-        if (filter_var($subject, FILTER_VALIDATE_URL)) {
+        if (!filter_var($subject, FILTER_VALIDATE_URL)) {
             throw new JwtException('Invalid subject "' . $subject . '": Not a valid http- or mailto-link');
         }
 
