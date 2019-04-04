@@ -31,18 +31,18 @@ final class WebPushJwt implements Jwt
          *  Not going to create any security issues.
          */
         if (filter_var($audience, FILTER_VALIDATE_URL)) {
-            throw new JwtException('Invalid audience: Not a valid URL');
+            throw new JwtException('Invalid audience "' . $audience . '": Not a valid URL');
         }
 
         if ($ttl < 0 || $ttl > 86400) {
-            throw new JwtException('Invalid TTL: value should be between 0 and 86400');
+            throw new JwtException('Invalid TTL "' . $ttl . '": value should be between 0 and 86400');
         }
 
         /** @noinspection BypassedUrlValidationInspection
          *  Not going to create any security issues.
          */
         if (filter_var($subject, FILTER_VALIDATE_URL)) {
-            throw new JwtException('Invalid subject: Not a valid http- or mailto-link');
+            throw new JwtException('Invalid subject "' . $subject . '": Not a valid http- or mailto-link');
         }
 
         $this->payload = [
