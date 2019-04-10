@@ -56,7 +56,11 @@ final class ES256 implements Signer
          * PhpStorm does not understand that this comes from the error handler set above.
          */
         catch (ErrorException $e) {
-            throw new SignerException('OpenSSL failed (' . $e->getCode() . '): ' . $e->getMessage(), $e);
+            throw new SignerException(
+                'OpenSSL failed (' . $e->getCode() . '): ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
         } finally {
             restore_error_handler();
         }
