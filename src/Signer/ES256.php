@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Sopsy\WebPush\Signer;
 
 use const OPENSSL_ALGO_SHA256;
-use function error_get_last;
 use function openssl_sign;
 use ErrorException;
 use Sopsy\WebPush\KeyConverter;
