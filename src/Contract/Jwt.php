@@ -8,10 +8,10 @@ use Sopsy\WebPush\Exception\SignerException;
 interface Jwt
 {
     /**
-     * Returns a signed Jwt string.
+     * Returns a signed JWT string.
      *
-     * @return string Encoded and signed Jwt
-     * @throws SignerException if signing the Jwt fails
+     * @return string Encoded and signed JWT
+     * @throws SignerException if signing the JWT fails
      */
     public function signedJwt(): string;
 }

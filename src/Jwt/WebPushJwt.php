@@ -19,8 +19,8 @@ final class WebPushJwt implements Jwt
     /**
      * JwtGenerator constructor.
      *
-     * @param string $audience Audience for the Jwt. Usually the push service origin
-     * @param int $ttl TTL for the Jwt in seconds, max is a day
+     * @param string $audience Audience for the JWT. Usually the push service origin
+     * @param int $ttl TTL for the JWT in seconds, max is a day
      * @param string $subject Sender contact info for the push message, our "mailto:email" or a full URL
      * @param Signer $signer Signer used to sign the signature
      * @throws JwtException if invalid parameters are supplied
@@ -53,7 +53,7 @@ final class WebPushJwt implements Jwt
 
         $this->signer = $signer;
         $this->header = [
-            'typ' => 'Jwt',
+            'typ' => 'JWT',
             'alg' => $signer->algorithmName(),
         ];
     }

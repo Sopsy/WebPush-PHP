@@ -88,7 +88,7 @@ final class PushMessage
      *
      * @param MessagePayload $payload
      * @return Response
-     * @throws SignerException if signing the Jwt fails
+     * @throws SignerException if signing the JWT fails
      */
     public function send(MessagePayload $payload): Response
     {

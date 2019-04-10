@@ -133,7 +133,7 @@ final class KeyConverter
 
     /**
      * A stupid function which handles only P256 DER signature file conversion to a plain 64 byte signature
-     * to be used when signing a Jwt.
+     * to be used when signing a JWT.
      *
      * @param string $key
      * @return string signature in binary format
