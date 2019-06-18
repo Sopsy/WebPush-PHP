@@ -77,15 +77,15 @@ final class ES256 implements Signer
             throw new SignerException('OpenSSL failed: Empty signature');
         }
 
-        // SHA256 DER signature is always 70-72 bytes:
-        // 2 byte DER header + 2 byte R header (+ 1 byte R padding if first R byte is >0x7F) + 32 byte R data
-        // + 2 byte S header (+ 1 byte S padding if first S byte is >0x7F) + 32 byte S data
+        // SHA256 DER signature is always 6-72 bytes:
+        // 2 byte DER header + 2 byte R header (+ 1 byte R padding if first R byte is >0x7F) + 0-32 byte R data (left trimmed 0x00)
+        // + 2 byte S header (+ 1 byte S padding if first S byte is >0x7F) + 0-32 byte S data (left trimmed 0x00)
         $signatureLength = mb_strlen($signature, '8bit');
-        if ($signatureLength < 70 || $signatureLength > 72) {
-            throw new SignerException('Invalid response from OpenSSL: Signature length (' . $signatureLength . ') is not 70-72 bytes');
+        if ($signatureLength < 6 || $signatureLength > 72) {
+            throw new SignerException('Invalid response from OpenSSL: Signature length (' . $signatureLength . ') is not 6-72 bytes');
         }
 
-        $signature = KeyConverter::stripDerSignatureHeaders($signature);
+        $signature = KeyConverter::derP256SignatureToRaw($signature);
 
         if (empty($signature)) {
             throw new SignerException('Signing the JWT failed: Empty signature');

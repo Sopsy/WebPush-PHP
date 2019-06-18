@@ -15,6 +15,8 @@ use function openssl_pkey_get_details;
 use function openssl_pkey_get_private;
 use function ord;
 use Sopsy\WebPush\Exception\KeyFileException;
+use function str_pad;
+use const STR_PAD_LEFT;
 
 final class KeyConverter
 {
@@ -142,39 +144,72 @@ final class KeyConverter
     }
 
     /**
-     * A stupid function which handles only P256 DER signature file conversion to a plain 64 byte signature
+     * A stupid function which handles only P256 DER signature file conversion to a raw 64 byte signature
      * to be used when signing a JWT.
      *
-     * @param string $key
+     * @param string $signature DER encoded P256 signature
      * @return string signature in binary format
      */
-    public static function stripDerSignatureHeaders(string $key): string
+    public static function derP256SignatureToRaw(string $signature): string
     {
-        // We have no interest in the first 2 bytes (ASN.1 tag id and sequence length)
-        $key = mb_substr($key, 2, null, '8bit');
+        // Needs to be a DER with compound structure (first byte needs to be 0x02)
+        if ($signature[0] !== "\x30") {
+            throw new InvalidArgumentException('Invalid DER signature, not a compound structure (0x30).');
+        }
 
-        // Get R length from its header (second byte)
-        $rLen = ord(mb_substr($key, 1, 1, '8bit'));
+        // Sequence for P256 signature should be between 4 and 70 bytes
+        $sequenceLength = ord($signature[1]);
+        if ($sequenceLength < 4 || $sequenceLength > 70) {
+            throw new InvalidArgumentException('Invalid DER signature, sequence length is not 4-70 bytes.');
+        }
+
+        // R needs to be integer (third byte needs to be 0x02)
+        if ($signature[2] !== "\x02") {
+            throw new InvalidArgumentException('Invalid DER signature, R is not an integer (0x02).');
+        }
+
+        // Get R length from its header (fourth byte)
+        $rLen = ord($signature[3]);
 
         // Get R from the signature (start = from end of R header)
-        $start = 2;
+        $rFirstByte = 4;
         if ($rLen === 33) {
-            // If length is 33, the first data byte is just a 0x00 padding, ignore it
-            ++$start;
+            // If length is 33, the first data byte is 0x00 to indicate an unsigned int, ignore it
+            if ($signature[$rFirstByte] !== "\x00") {
+                throw new InvalidArgumentException('Invalid DER signature, R length is 33 bytes and its first byte is not 0x00.');
+            }
+            ++$rFirstByte;
         }
-        $r = mb_substr($key, $start, 32, '8bit');
 
-        // Get S length from its header (second byte, R header + R + S header first byte)
-        $sLen = ord(mb_substr($key, 2 + $rLen + 1, 1, '8bit'));
+        // Get R
+        $r = mb_substr($signature, $rFirstByte, 32, '8bit');
+
+        // DER left trims 0x00 from signature values, restore it
+        $r = str_pad($r, 32, "\x00", STR_PAD_LEFT);
+
+        // S needs to be integer
+        if ($signature[4 + $rLen] !== "\x02") {
+            throw new InvalidArgumentException('Invalid DER signature, S is not an integer (0x02).');
+        }
+
+        // Get S length from its header (DER and R header + R + S header first byte)
+        $sLen = ord(mb_substr($signature, 4 + $rLen + 1, 1, '8bit'));
 
         // Get S from the signature (R header + R + S header)
-        $start = 2 + $rLen + 2;
+        $sFirstByte = 4 + $rLen + 2;
         if ($sLen === 33) {
-            // If length is 33, the first data byte is just a 0x00 padding, ignore it
-            ++$start;
+            // If length is 33, the first data byte is 0x00 to indicate an unsigned int, ignore it
+            if ($signature[$sFirstByte] !== "\x00") {
+                throw new InvalidArgumentException('Invalid DER signature, S length is 33 bytes and its first byte is not 0x00.');
+            }
+            ++$sFirstByte;
         }
 
-        $s = mb_substr($key, $start, null, '8bit');
+        // Get S
+        $s = mb_substr($signature, $sFirstByte, 32, '8bit');
+
+        // DER left trims 0x00 from signature values, restore it
+        $s = str_pad($s, 32, "\x00", STR_PAD_LEFT);
 
         return $r . $s;
     }
