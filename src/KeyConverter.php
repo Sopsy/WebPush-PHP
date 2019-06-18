@@ -7,6 +7,7 @@ use function base64_decode;
 use function base64_encode;
 use function chunk_split;
 use InvalidArgumentException;
+use function ltrim;
 use function mb_strlen;
 use function mb_strpos;
 use function mb_substr;
@@ -163,6 +164,7 @@ final class KeyConverter
             throw new InvalidArgumentException('Invalid DER signature, sequence length is not 4-70 bytes.');
         }
 
+        // ---- Get R ----
         // R needs to be integer (third byte needs to be 0x02)
         if ($signature[2] !== "\x02") {
             throw new InvalidArgumentException('Invalid DER signature, R is not an integer (0x02).');
@@ -171,45 +173,31 @@ final class KeyConverter
         // Get R length from its header (fourth byte)
         $rLen = ord($signature[3]);
 
-        // Get R from the signature (start = from end of R header)
-        $rFirstByte = 4;
-        if ($rLen === 33) {
-            // If length is 33, the first data byte is 0x00 to indicate an unsigned int, ignore it
-            if ($signature[$rFirstByte] !== "\x00") {
-                throw new InvalidArgumentException('Invalid DER signature, R length is 33 bytes and its first byte is not 0x00.');
-            }
-            ++$rFirstByte;
+        // If length is 33, the first data byte should be 0x00 to indicate an unsigned int
+        if ($rLen === 33 && $signature[4] !== "\x00") {
+            throw new InvalidArgumentException('Invalid DER signature, R length is 33 bytes and its first byte is not 0x00.');
         }
 
-        // Get R
-        $r = mb_substr($signature, $rFirstByte, 32, '8bit');
+        // Get R from the signature
+        $r = static::getSignaturePart($signature, 4, $rLen);
 
-        // DER left trims 0x00 from signature values, restore it
-        $r = str_pad($r, 32, "\x00", STR_PAD_LEFT);
-
+        // ---- Get S ----
         // S needs to be integer
         if ($signature[4 + $rLen] !== "\x02") {
             throw new InvalidArgumentException('Invalid DER signature, S is not an integer (0x02).');
         }
 
-        // Get S length from its header (DER and R header + R + S header first byte)
+        // Get S length from its header (skip DER and R header + R + S header first byte)
         $sLen = ord(mb_substr($signature, 4 + $rLen + 1, 1, '8bit'));
 
-        // Get S from the signature (R header + R + S header)
+        // Get S from the signature (skip R header + R + S header)
         $sFirstByte = 4 + $rLen + 2;
-        if ($sLen === 33) {
-            // If length is 33, the first data byte is 0x00 to indicate an unsigned int, ignore it
-            if ($signature[$sFirstByte] !== "\x00") {
-                throw new InvalidArgumentException('Invalid DER signature, S length is 33 bytes and its first byte is not 0x00.');
-            }
-            ++$sFirstByte;
+        if ($sLen === 33 && $signature[$sFirstByte] !== "\x00") {
+            throw new InvalidArgumentException('Invalid DER signature, S length is 33 bytes and its first byte is not 0x00.');
         }
 
-        // Get S
-        $s = mb_substr($signature, $sFirstByte, 32, '8bit');
-
-        // DER left trims 0x00 from signature values, restore it
-        $s = str_pad($s, 32, "\x00", STR_PAD_LEFT);
+        // Get S from the signature
+        $s = static::getSignaturePart($signature, $sFirstByte, $sLen);
 
         return $r . $s;
     }
@@ -235,5 +223,25 @@ final class KeyConverter
         }
 
         return $der;
+    }
+
+    /**
+     * Returns a signature part (R or S) from a full DER encoded P256 signature
+     *
+     * @param string $signature Full DER encoded P256 signature
+     * @param int $firstByte First byte of the signature part to get
+     * @param int $partLength Length of the signature part to get in bytes
+     * @return string Signature part (R or S)
+     */
+    private static function getSignaturePart(string $signature, int $firstByte, int $partLength): string
+    {
+        // Get part from the signature
+        $part = mb_substr($signature, $firstByte, $partLength, '8bit');
+
+        // Remove possible unsigned int indicator
+        $part = ltrim($part, "\x00");
+
+        // DER left trims 0x00 from signature values, restore it
+        return str_pad($part, 32, "\x00", STR_PAD_LEFT);
     }
 }
