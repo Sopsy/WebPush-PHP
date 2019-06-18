@@ -3,7 +3,16 @@ declare(strict_types=1);
 
 namespace Sopsy\WebPush\MessagePayload;
 
+use function chr;
 use Exception;
+use function hash_hkdf;
+use function in_array;
+use function mb_strlen;
+use function openssl_encrypt;
+use function openssl_get_cipher_methods;
+use const OPENSSL_RAW_DATA;
+use function pack;
+use function random_bytes;
 use RuntimeException;
 use Sopsy\WebPush\Exception\KeyCreateException;
 use Sopsy\WebPush\Exception\KeyFileException;
@@ -11,6 +20,9 @@ use Sopsy\WebPush\Exception\PayloadException;
 use Sopsy\WebPush\KeyConverter;
 use Sopsy\WebPush\Contract\KeyFactory;
 use Sopsy\WebPush\Contract\MessagePayload;
+use function sprintf;
+use function str_repeat;
+use function strlen;
 
 final class Aes128Gcm implements MessagePayload
 {

@@ -3,7 +3,17 @@ declare(strict_types=1);
 
 namespace Sopsy\WebPush;
 
+use function base64_decode;
+use function base64_encode;
+use function chunk_split;
 use InvalidArgumentException;
+use function mb_strlen;
+use function mb_strpos;
+use function mb_substr;
+use function openssl_error_string;
+use function openssl_pkey_get_details;
+use function openssl_pkey_get_private;
+use function ord;
 use Sopsy\WebPush\Exception\KeyFileException;
 
 final class KeyConverter

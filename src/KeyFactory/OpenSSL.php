@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 namespace Sopsy\WebPush\KeyFactory;
 
+use function extension_loaded;
+use const OPENSSL_KEYTYPE_EC;
+use function openssl_pkey_export;
+use function openssl_pkey_free;
+use function openssl_pkey_get_details;
+use function openssl_pkey_new;
 use Sopsy\WebPush\Exception\KeyCreateException;
 use Sopsy\WebPush\Contract\KeyFactory;
 

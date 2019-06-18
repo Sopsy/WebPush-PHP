@@ -5,10 +5,12 @@ namespace Sopsy\WebPush\Jwt;
 
 use const FILTER_VALIDATE_URL;
 use function filter_var;
+use function json_encode;
 use Sopsy\Base64Url\Base64Url;
 use Sopsy\WebPush\Contract\Jwt;
 use Sopsy\WebPush\Contract\Signer;
 use Sopsy\WebPush\Exception\JwtException;
+use function time;
 
 final class WebPushJwt implements Jwt
 {

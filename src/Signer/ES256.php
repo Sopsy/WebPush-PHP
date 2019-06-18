@@ -3,13 +3,22 @@ declare(strict_types=1);
 
 namespace Sopsy\WebPush\Signer;
 
+use function base64_decode;
+use function chunk_split;
+use function fgets;
+use function fopen;
+use function mb_strlen;
 use const OPENSSL_ALGO_SHA256;
 use function openssl_sign;
 use ErrorException;
+use function restore_error_handler;
+use function set_error_handler;
 use Sopsy\WebPush\KeyConverter;
 use Sopsy\WebPush\Contract\Signer;
 use Sopsy\WebPush\Exception\SignerException;
 use Sopsy\WebPush\Exception\KeyFileException;
+use function strpos;
+use function trim;
 
 final class ES256 implements Signer
 {

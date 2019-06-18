@@ -3,7 +3,29 @@ declare(strict_types=1);
 
 namespace Sopsy\WebPush;
 
+use function curl_close;
+use function curl_error;
+use function curl_exec;
+use function curl_getinfo;
+use function curl_init;
+use const CURL_IPRESOLVE_V4;
+use function curl_setopt;
+use const CURLINFO_HTTP_CODE;
+use const CURLOPT_CONNECTTIMEOUT;
+use const CURLOPT_HTTPHEADER;
+use const CURLOPT_IPRESOLVE;
+use const CURLOPT_POST;
+use const CURLOPT_POSTFIELDS;
+use const CURLOPT_RETURNTRANSFER;
+use const CURLOPT_SSL_VERIFYPEER;
+use const CURLOPT_TIMEOUT;
+use const CURLOPT_URL;
+use const FILTER_VALIDATE_URL;
+use function filter_var;
 use InvalidArgumentException;
+use function is_int;
+use function mb_strlen;
+use function preg_match;
 use Sopsy\Base64Url\Base64Url;
 use Sopsy\WebPush\Contract\Jwt;
 use Sopsy\WebPush\Contract\MessagePayload;
@@ -11,6 +33,8 @@ use Sopsy\WebPush\Contract\MessageUrgency;
 use Sopsy\WebPush\Contract\Response;
 use Sopsy\WebPush\Exception\KeyFileException;
 use Sopsy\WebPush\Exception\SignerException;
+use function strpos;
+use function trim;
 
 final class PushMessage
 {
