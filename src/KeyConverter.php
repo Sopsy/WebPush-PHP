@@ -153,7 +153,7 @@ final class KeyConverter
      */
     public static function derP256SignatureToRaw(string $signature): string
     {
-        // Needs to be a DER with compound structure (first byte needs to be 0x02)
+        // Needs to be a DER with compound structure (first byte needs to be 0x30)
         if ($signature[0] !== "\x30") {
             throw new InvalidArgumentException('Invalid DER signature, not a compound structure (0x30).');
         }
