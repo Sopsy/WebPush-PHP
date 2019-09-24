@@ -9,10 +9,7 @@
     "autoload": {
         "psr-4": {
             "Sopsy\\WebPush\\": "src/"
-        },
-        "files": [
-            "src/Polyfills.php"
-        ]
+        }
     },
     "authors": [
         {
@@ -22,7 +19,7 @@
         }
     ],
     "require": {
-        "php": "^7.2",
+        "php": "^7.3",
         "ext-mbstring": "*",
         "ext-openssl": "*",
         "ext-json": "*",
