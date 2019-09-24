@@ -1,5 +1,6 @@
 # WebPush-PHP
-PHP Web Push library
+PHP Web Push library.
+Requires PHP 7.3+
 
 Supports only ES256 and aes128gcm.
 
