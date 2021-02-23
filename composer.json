@@ -1,7 +1,7 @@
 {
     "name": "sopsy/webpush-php",
     "description": "PHP library for the Web Push API",
-    "version": "3.0",
+    "version": "3.1",
     "keywords": ["webpush", "webpushapi", "es256", "aes128gcm"],
     "homepage": "https://github.com/Sopsy/WebPush-PHP",
     "type": "library",
@@ -19,7 +19,7 @@
         }
     ],
     "require": {
-        "php": "^7.3",
+        "php": ">=7.3",
         "ext-mbstring": "*",
         "ext-openssl": "*",
         "ext-json": "*",
