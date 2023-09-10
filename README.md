@@ -1,4 +1,6 @@
 # WebPush-PHP
+# DEPRECATED, REPLACED BY https://github.com/Sopsy/WebPush
+
 PHP Web Push library.
 Requires PHP 7.3+
 
